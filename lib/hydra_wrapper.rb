@@ -91,7 +91,7 @@ class HydraWrapper
 
       unless response.success?
         message = {
-          event: "http_multi_fail"
+          event: "http_multi_fail",
           sender_id: @user.id,
           url: response.effective_url,
           response_code: response.code
