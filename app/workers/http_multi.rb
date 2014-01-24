@@ -16,11 +16,17 @@ module Workers
       hydra = HydraWrapper.new(user, people, encoded_object_xml, dispatcher)
 
       hydra.enqueue_batch
+
+      hydra.keep_for_retry_if do |response|
+        response.code != 0
+      end
+
       hydra.run
 
-      unless hydra.failed_people.empty?
+
+      unless hydra.people_to_retry.empty?
         if retry_count < MAX_RETRIES
-          Workers::HttpMulti.perform_in(1.hour, user_id, encoded_object_xml, hydra.failed_people, dispatcher_class_as_string, retry_count + 1)
+          Workers::HttpMulti.perform_in(1.hour, user_id, encoded_object_xml, hydra.people_to_retry, dispatcher_class_as_string, retry_count + 1)
         else
           Rails.logger.info("event=http_multi_abandon sender_id=#{user_id} failed_recipient_ids='[#{person_ids.join(', ')}] '")
         end
