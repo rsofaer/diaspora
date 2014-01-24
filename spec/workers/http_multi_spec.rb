@@ -34,6 +34,14 @@ describe Workers::HttpMulti do
       time: 0.2,
       effective_url: 'http://foobar.com'
     )
+    @ssl_error_response = Typhoeus::Response.new(
+      code: 0,
+      body: "",
+      time: 0.2,
+      effective_url: 'http://foobar.com',
+      response_message: 'SSL connect error'
+    )
+
   end
 
   it 'POSTs to more than one person' do
@@ -53,6 +61,15 @@ describe Workers::HttpMulti do
     Typhoeus.stub(person.receive_url).and_return @failed_response
 
     Workers::HttpMulti.should_receive(:perform_in).with(1.hour, bob.id, @post_xml, [person.id], anything, 1).once
+    Workers::HttpMulti.new.perform bob.id, @post_xml, [person.id], "Postzord::Dispatcher::Private"
+  end
+
+  it 'does not retry on an SSL error' do
+    person = @people.first
+
+    Typhoeus.stub(person.receive_url).and_return @ssl_error_response
+
+    Workers::HttpMulti.should_not_receive(:perform_in)
     Workers::HttpMulti.new.perform bob.id, @post_xml, [person.id], "Postzord::Dispatcher::Private"
   end
 

@@ -55,7 +55,7 @@ class HydraWrapper
     @people.group_by { |person|
       @dispatcher_class.receive_url_for person
     }
-  end 
+  end
 
   # Prepares and inserts job into the hydra queue
   # @param url [String]
@@ -80,14 +80,18 @@ class HydraWrapper
 
       unless response.success?
         message = {
-          event: "http_multi_fail",
           sender_id: @user.id,
           url: response.effective_url,
           response_code: response.code
         }
-        message[:response_message] = response.return_message if response.code == 0
+        if response.code == 0
+          message[:event] = "http_multi_abandon"
+          message[:response_message] = response.return_message if response.code == 0
+        else
+          message[:event] = "http_multi_fail"
+          @failed_people += people_for_receive_url.map(&:id)
+        end
         Rails.logger.info message.to_a.map { |k,v| "#{k}=#{v}" }.join(' ')
-        @failed_people += people_for_receive_url.map(&:id)
       end
     end
   end
